@@ -10,6 +10,9 @@ const minor = [0, 2, 3, 5, 7, 8, 10, 12]
 
 const pentatonic = [0, 3, 5, 8, 10]
 
+// Initialize video element to none; user has to accept for it to be created
+var capture = null 
+
 // Taken from Nick's videos and guides
 // opts fields: (param, peak, hold, time, a, d, s, r)
 function adsr (opts) {
@@ -27,10 +30,11 @@ function adsr (opts) {
     const peak = opts.peak || 0.8
     const hold = opts.hold || 0.6
     const time = opts.time || ctx.currentTime
-    const a = opts.attack || 0.2
-    const d = opts.decay || 0.1
-    const s = opts.sustain || 0.1
-    const r = opts.release || 0.1
+    const scaler = opts.scaler || 1.0
+    const a = opts.attack || 0.2 * scaler
+    const d = opts.decay || 0.1 * scaler
+    const s = opts.sustain || 0.1 * scaler
+    const r = opts.release || 0.1 * scaler
 
     const initVal = param.value
     param.setValueAtTime(initVal, time)
@@ -57,19 +61,16 @@ function makeMusic(n) {
 
 }
 
-// Because of chrome autoplay restrictions...
-document.addEventListener('mousedown', playMusic);
-
-function playMusic() {
+function playBoop(hz) {
     const synth1 = new OscillatorNode(ctx)
     const volume = new GainNode(ctx, {gain : 0.001})
     synth1.connect(volume)
     volume.connect(fft)
     volume.connect(ctx.destination)
-    synth1.frequency.setValueAtTime(440, ctx.currentTime)
+    synth1.frequency.setValueAtTime(hz, ctx.currentTime)
     synth1.start(ctx.currentTime)
-    adsr({"param": volume.gain})
-    synth1.stop(ctx.currentTime + 1)
+    adsr({"param": volume.gain, "scaler" : 0.2})
+    synth1.stop(ctx.currentTime + 0.3)
     //document.removeEventListener('click', playMusic);
 }
 
@@ -124,6 +125,8 @@ var dt = 0.01
 
 // Renamed setup() which is a default p5 function to setup_p5 so we can hide it
 function setupApp() {
+    // Cancel speech if there's current speech going on
+    window.speechSynthesis.cancel()
     user_typed = false
     inputs = document.querySelectorAll('input');
     for (let i = 0; i<inputs.length; i++) {
@@ -149,13 +152,90 @@ function setupApp() {
     setInterval(changeBG, 1000);
     angle = PI
     tentacles = [] 
+
+    capture = createCapture(VIDEO);
+    capture.hide();
+
+    // Say a welcome to the user and initialize music! msg will say the bio later...
+    var greeting = "Hello, " + document.querySelector('#fname').value;
+
+    
+    msg = new SpeechSynthesisUtterance(greeting);
+    window.speechSynthesis.speak(msg);
+
+    var greeting2;
+
+    age = parseInt(document.querySelector("#age").value)
+    /*
+        Algorithmicly generated mYOUsic:
+
+        A first name says so much about a person and can be a reflection of their
+        whole personality; just mentioned a person's first name can bring up so many
+        aspects of their personality and positive/negative emotions; the melody 
+        and some parts of the rhythm will be determined by the first name
+
+        Last name signifies a person's heritage. The baseline of the piece which 
+        serves as the harmony and gives it a distinctive underlying flavor is
+        determined by the last name.
+
+        Age parameter:
+        Age will determine tempo of piece according to a piecewise linear interpolation between
+        the points (0, 80), (20, 160), (80, 60); this is to roughly match your general 
+        energy levels :) 
+
+        The bio of a person describes extra elements of their personality and serve
+        as additions to the harmony and ornamental features; they're the cherry on 
+        top
+        
+        If you don't put an age, we'll just guess you have 12 year old energy levels.
+
+        Volume:
+        will be scaled slightly louder for older people to compensate for hearing loss!
+
+        And of course, the mYOUsic would not be complete without YOU. We can't force
+        you to participate though or guarantee that you have a webcam; you might just be a robot
+    */
+
+    if (age < 7) {
+        greeting2 = "You are a little baby."
+    } else if (age < 18) {
+        greeting2 = "I heard you LOVE compulsory education"
+    } else if (age < 40) {
+        greeting2 = "You haven't hit your midlife crisis yet."
+    } else if (age < 70) {
+        greeting2 = "ok boomer"
+    } else if (age < 123) {
+        greeting2 = "wow you are OLD."
+    } else if (age > 123) {
+        greeting2 = "you are either a robot or the world's oldest person."
+    } else {
+        greeting2 = "I don't know your age. I'll just assume you're 12."
+    }
+
+    msg = new SpeechSynthesisUtterance(greeting2);
+    window.speechSynthesis.speak(msg);
+
+    msg2 = new SpeechSynthesisUtterance("Enjoy the music!")
+    window.speechSynthesis.speak(msg2);
+
+    setTimeout(initMusic, 4500);
+}
+
+function initMusic() {
+
 }
 
 function draw() {
+    if (capture) {
+        // Place video in center of screen
+        let x = (width - capture.width)/2
+        y = (height - capture.height)/2
+        image(capture, x, y);
+    }
     cursize = map(sin(angle), -1, 1, minsize, maxsize);
     ellipse(mouseX, mouseY, cursize, cursize);
     if (mouseIsPressed) {
-        angle += 2*PI/frameRate() 
+        angle += 2*PI/frameRate(); 
     }
 }
 
@@ -178,3 +258,7 @@ function Tentacle(baseCoord) {
 function drawTentacles() {
 
 }
+
+// Initially because of chrome autoplay restrictions...
+// Beep on every click adds to the computer-y terminal like theme though
+document.addEventListener('mousedown', e => playBoop(220));
