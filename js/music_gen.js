@@ -1,6 +1,5 @@
 const ctx = new (window.AudioContext || window.webkitAudioContext)
 const fft = new AnalyserNode(ctx, {fftsize : 2048})
-createWaveCanvas({ element: 'section', analyser: fft})
 
 // Vibe mode... make graphics cool!
 energy = 0
@@ -51,12 +50,16 @@ function spazVol (gainNode, n_oscs, duration, time = ctx.currentTime) {
     }
 }
 
+// Random music generation based on the four input attributes! Modulate
+//
+
 function makeMusic(n) {
 
 }
 
 // Because of chrome autoplay restrictions...
 document.addEventListener('mousedown', playMusic);
+
 function playMusic() {
     const synth1 = new OscillatorNode(ctx)
     const volume = new GainNode(ctx, {gain : 0.001})
@@ -105,9 +108,9 @@ function modulate(hz, freq) {
     // weird wobbly sound
     spazVol(volume.gain, dur*freq, dur)
     synth1.stop(ctx.currentTime + dur)
-
     // create earthquake effect in p5...
 }
+
 
 
 // Stuff for p5
@@ -119,8 +122,30 @@ var curBG = 0
 var angle 
 var dt = 0.01
 
-function setup() {
-    c = createCanvas(800, 800)
+// Renamed setup() which is a default p5 function to setup_p5 so we can hide it
+function setupApp() {
+    user_typed = false
+    inputs = document.querySelectorAll('input');
+    for (let i = 0; i<inputs.length; i++) {
+        if (inputs[i].value !== '') {
+            user_typed = true
+        }
+    }
+    if (document.querySelector('textarea').value !== '') {
+        user_typed = true;
+    }
+
+    if (!user_typed) {
+        console.log("user didn't type anything but wants to vibe... LOL NO");
+        return;
+    }
+    if (document.querySelector("canvas") == null) {
+        createWaveCanvas({ element: 'section', analyser: fft});
+    }
+
+    // Change p5 code later; reinitialize the music player everytime the user clicks the button!
+    c = createCanvas(800, 600)
+    c.parent("p5canvas")
     setInterval(changeBG, 1000);
     angle = PI
     tentacles = [] 

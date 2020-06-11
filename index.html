@@ -4,42 +4,76 @@
 <head>
   <meta charset="UTF-8">
   <title>title</title>
-
-  <style>
-    .button {
-      /* Green */
-      background-color: #32a89b;
-      border: none;
-      color: white;
-      padding: 15px 32px;
-      border-radius: 12px;
-      text-align: center;
-      text-decoration: none;
-      display: inline-block;
-      font-size: 16px;
-    }
-  </style>
+  <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 
 <body>
   <section>
-  
+    <div id = "p5canvas" style = "text-align: center"> </div>
   </section>
 
+<!-- waveCanvas is going to be attached to this section for now; easy visualization -->
   
-  <button id="gottaClick" onclick="vibe(70)" class = "button"> VIBE </button>
   <br> 
   <script src="lib/waveCanvas.js"> </script>
   <script src="lib/p5.js"> </script>
   <script src="lib/matter.js"> </script>
   <script src="js/music_gen.js"> </script>
+
+  <!-- Thanks https://lingojam.com/FancyTextGenerator for these cool symbols! -->
+  <div class = "centered" id = user_forms> 
+    <div style="display: inline-block; text-align: left">
+
+      <code class = "description"> dear visitor:
+        <br> &nbsp if u r a human bean, please complete this captcha. it should be obvious what to do.
+
+        <br> you will be rewarded with a fun audiovisual experience upon successful completion of the captcha. 
+        <b class = blink>█</b>
+      </code>
+
+      <p> *we reserve the right to use this information in accordance with our 
+        <a href="termsConditions.html">terms and conditions</a>
+      </p>
+
+      <div class = "floating c1" onclick = "">
+        <h1> First ⓝⓐⓜⓔ? 
+          <input class = "troll" type="text" id="fname"> <br>
+        </h>
+      </div>
+      <br>
+
+      <div class = "floating c2">
+        <h1> Last ⓝⓐⓜⓔ? 
+          <input class = "troll" type="text" id="lname"> <br>
+        </h1> 
+      </div>
+
+      <div class = "floating c3">
+        <h2> (っ◔◡◔)っ ♥ Years ♥ 
+          <input type="text" id="age"> <br>
+          ΛＬＩＶΣ
+        </h2>
+      </div>
+      
+      <div class = "floating c4">
+        <h1> 𝕭𝖎𝖔/𝕱𝖆𝖈𝖙𝖘: 
+          <textarea type="text" id="bio" style = "font-size : 14px;"></textarea>
+        </h1>
+      </div>
+      
+    </div>
+
+    <div>
+      <button id="gottaClick" style = "width:320" 
+            onclick= "setupApp()" 
+            class = "button"> VIBE 
+      </button>
+    </div>
+
+  </div>
   
+
   
-  <!-- waveCanvas is going to be attached to this section for now; easy visualization -->
+</body>
   
-  
-  
-  
-  </body>
-  
-  </html>
+</html>
