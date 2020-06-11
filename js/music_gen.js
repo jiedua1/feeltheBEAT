@@ -11,7 +11,9 @@ const minor = [0, 2, 3, 5, 7, 8, 10, 12]
 const pentatonic = [0, 3, 5, 8, 10]
 
 // Initialize video element to none; user has to accept for it to be created
-var capture = null 
+var capture;
+var poseNet;
+var poses = [];
 
 // Taken from Nick's videos and guides
 // opts fields: (param, peak, hold, time, a, d, s, r)
@@ -218,6 +220,13 @@ function setupApp() {
     msg2 = new SpeechSynthesisUtterance("Enjoy the music!")
     window.speechSynthesis.speak(msg2);
 
+    // Create a new poseNet method
+    const poseNet = ml5.poseNet(capture, modelLoaded);
+    poseNet.on('pose', function(res){
+        poses = res;
+        console.log(res);
+    })
+
     setTimeout(initMusic, 4500);
 }
 
@@ -225,18 +234,29 @@ function initMusic() {
 
 }
 
+ // When the posenet model is loaded
+ function modelLoaded() {
+    console.log("Model Loaded!");
+
+ }
+
 function draw() {
+    let dx, dy;
     if (capture) {
         // Place video in center of screen
-        let x = (width - capture.width)/2
-        y = (height - capture.height)/2
-        image(capture, x, y);
+        dx = (width - capture.width)/2
+        dy = (height - capture.height)/2
+        tint(255, 60); // Display at 3/4 opacity for fade
+        image(capture, dx, dy);
     }
+    
     cursize = map(sin(angle), -1, 1, minsize, maxsize);
     ellipse(mouseX, mouseY, cursize, cursize);
     if (mouseIsPressed) {
         angle += 2*PI/frameRate(); 
     }
+    drawSkeleton(dx, dy);
+    drawKeypoints(dx, dy); 
 }
 
 function changeBG() {
@@ -262,3 +282,47 @@ function drawTentacles() {
 // Initially because of chrome autoplay restrictions...
 // Beep on every click adds to the computer-y terminal like theme though
 document.addEventListener('mousedown', e => playBoop(220));
+
+// Copied from https://ml5js.org/reference/api-PoseNet/ currently; will adapt to make drums
+// The following comes from https://ml5js.org/docs/posenet-webcam // A function to draw ellipses over the detected keypoints
+function drawKeypoints(dx = 0, dy = 0) {
+    // move pen by dx, dy before drawing
+    // Loop through all the poses detected
+    push();
+    translate(dx, dy);
+    for (let i = 0; i < poses.length; i++) {
+        // For each pose detected, loop through all the keypoints
+        let pose = poses[i].pose;
+        for (let j = 0; j < pose.keypoints.length; j++) {
+            // A keypoint is an object describing a body part (like rightArm or leftShoulder)
+            let keypoint = pose.keypoints[j];
+            // Only draw an ellipse is the pose probability is bigger than 0.2
+            if (keypoint.score > 0.2) {
+                fill(255);
+                stroke(20);
+                strokeWeight(4);
+                ellipse(round(keypoint.position.x), round(keypoint.position.y), 8, 8);
+            }
+        }
+    }
+    pop();
+}
+// A function to draw the skeletons
+function drawSkeleton(dx = 0, dy = 0) {
+    // move pen by dx, dy before drawing
+    push();
+    translate(dx, dy);
+    // Loop through all the skeletons detected
+    for (let i = 0; i < poses.length; i++) {
+        let skeleton = poses[i].skeleton;
+        // For every skeleton, loop through all body connections
+        for (let j = 0; j < skeleton.length; j++) {
+            let partA = skeleton[j][0];
+            let partB = skeleton[j][1];
+            stroke(255);
+            strokeWeight(1);
+            line(partA.position.x, partA.position.y, partB.position.x, partB.position.y);
+        }
+    }
+    pop();
+}
