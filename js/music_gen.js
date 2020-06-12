@@ -168,35 +168,6 @@ function setupApp() {
     var greeting2;
 
     age = parseInt(document.querySelector("#age").value)
-    /*
-        Algorithmicly generated mYOUsic:
-
-        A first name says so much about a person and can be a reflection of their
-        whole personality; just mentioned a person's first name can bring up so many
-        aspects of their personality and positive/negative emotions; the melody 
-        and some parts of the rhythm will be determined by the first name
-
-        Last name signifies a person's heritage. The baseline of the piece which 
-        serves as the harmony and gives it a distinctive underlying flavor is
-        determined by the last name.
-
-        Age parameter:
-        Age will determine tempo of piece according to a piecewise linear interpolation between
-        the points (0, 80), (20, 160), (80, 60); this is to roughly match your general 
-        energy levels :) 
-
-        The bio of a person describes extra elements of their personality and serve
-        as additions to the harmony and ornamental features; they're the cherry on 
-        top
-        
-        If you don't put an age, we'll just guess you have 12 year old energy levels.
-
-        Volume:
-        will be scaled slightly louder for older people to compensate for hearing loss!
-
-        And of course, the mYOUsic would not be complete without YOU. We can't force
-        you to participate though or guarantee that you have a webcam; you might just be a robot
-    */
 
     if (age < 7) {
         greeting2 = "You are a little baby."
@@ -224,13 +195,84 @@ function setupApp() {
     const poseNet = ml5.poseNet(capture, modelLoaded);
     poseNet.on('pose', function(res){
         poses = res;
-        console.log(res);
+        // console.log(res);
     })
-
-    setTimeout(initMusic, 4500);
+    
+    setTimeout((x) => startMusic(), 4500);
 }
 
-function initMusic() {
+/* Performs the linear interpolation described in the mYOUsic algorithm */
+function calcBPM(age) {
+    var real_age = 12;
+
+    if (typeof(age) === "number" && !isNaN(age)) {
+        real_age = age;
+    }
+
+    if (real_age > 100) {
+        real_age = 100;
+    } else if (real_age < 0) {
+        real_age = 0;
+    }
+
+    
+
+    // Age will determine tempo of piece according to a piecewise linear interpolation between
+    // the points (0, 80), (20, 160), (80, 60); this is to roughly match your general 
+    // energy levels :) 
+    if (real_age >= 0 && real_age <= 20) {
+        return 80 + (160-80) * real_age/20;
+    } else {
+        return 160 - (100/60) * (real_age - 20)
+    }
+}
+
+/*
+    Algorithmicly generated mYOUsic:
+
+    A first name says so much about a person and can be a reflection of their
+    whole personality; just mentioned a person's first name can bring up so many
+    aspects of their personality and positive/negative emotions; the melody 
+    and some parts of the rhythm will be determined by the first name
+
+    Last name signifies a person's heritage. The baseline of the piece which 
+    serves as the harmony and gives it a distinctive underlying flavor is
+    determined by the last name.
+
+    Age parameter:
+    Age will determine tempo of piece according to a piecewise linear interpolation between
+    the points (0, 80), (20, 160), (80, 60); this is to roughly match your general 
+    energy levels :) 
+
+    The bio of a person describes extra elements of their personality and serve
+    as additions to the harmony and ornamental features; they're the cherry on 
+    top
+    
+    If you don't put an age, we'll just guess you have 12 year old energy levels.
+
+    Volume:
+    will be scaled slightly louder for older people to compensate for hearing loss!
+
+    And of course, the mYOUsic would not be complete without YOU. We can't force
+    you to participate though or guarantee that you have a webcam; you might just be a robot
+*/
+function startMusic() {
+    age = parseInt(document.querySelector("#age").value)
+    fname = document.querySelector('#fname').value
+    lname = document.querySelector('#lname').value
+    bio = document.querySelector('textarea').value
+
+    console.log(calcBPM(age))
+    Tone.Transport.bpm.value = calcBPM(age)
+    
+
+    /* TODO: modulo character codes of the letters by some prime number or whatever number
+     * that will correspond to different chord progressions and/or shifts between chord progressions!
+     * for the last name
+     * 
+     */
+
+     
 
 }
 
@@ -256,6 +298,7 @@ function draw() {
         angle += 2*PI/frameRate(); 
     }
     drawSkeleton(dx, dy);
+    drawWrists(dx, dy);
     drawKeypoints(dx, dy); 
 }
 
@@ -307,6 +350,10 @@ function drawKeypoints(dx = 0, dy = 0) {
     }
     pop();
 }
+
+function playBass() {
+
+}
 // A function to draw the skeletons
 function drawSkeleton(dx = 0, dy = 0) {
     // move pen by dx, dy before drawing
@@ -325,4 +372,78 @@ function drawSkeleton(dx = 0, dy = 0) {
         }
     }
     pop();
+}
+
+// maximum velocity of the left wrist!
+/* 
+pose: {score: 0.4921857279396671, keypoints: Array(17), nose: {…}, leftEye: {…}, rightEye: {…}, …}
+skeleton: Array(3)
+0: Array(2)
+0:
+part: "leftElbow"
+position: {x: 445.63330934758767, y: 379.6665158559936}
+score: 0.838269054889679
+*/
+
+
+// Magnitudes of velocity
+var lvel = 0
+var rvel = 0
+
+// right and left wrist coordinates from last frame?
+var lastRy = 0
+var lastRx = 0
+var lastLy = 0
+var lastLx = 0
+
+// Need some acceleration to play the drum; high velocity but low velocity before!
+// Don't want infinite oscillating drums
+var trigger_low = 15
+var trigger_high = 25
+
+
+// Draws drumsticks on wrists! boom chacka wow wow
+function drawWrists(dx = 0, dy = 0) {
+    // move pen by dx, dy before drawing
+    push();
+    translate(dx, dy);
+    // Loop through all the skeletons detected
+    for (let i = 0; i < poses.length; i++) {
+        let skeleton = poses[i].skeleton;
+        // For every skeleton, loop through all body connections
+        for (let j = 0; j < skeleton.length; j++) {
+            let partA = skeleton[j][0];
+            let partB = skeleton[j][1];
+            // Elbow -> Wrist connection is the forearm
+            if (partA.part === "leftElbow" || partA.part === "rightElbow") {
+
+                if (partB.part === "leftWrist") {
+                    lastLy = partB.position.y;
+                    lastLx = partB.position.x;
+                } else if (partB.part === "rightWrist") {
+                    console.log(partB.position)
+                    lastRy = partB.position.y;
+                    lastRx = partB.position.x;
+                }
+                
+                // TODO: VELOCITY CODE + PLAY DRUMS
+                
+
+                stroke(255);
+                strokeWeight(10);
+                // go PAST the second point
+                let movex = partB.position.x - partA.position.x
+                let movey = partB.position.y - partA.position.y
+                console.log("drawed");
+                line(partA.position.x, partA.position.y, partB.position.x + movex/2, partB.position.y + movey/2);
+            }
+        }
+    }
+    pop();
+}
+
+// TODO
+// Play the drum at the position of x,y and make a little pow on the screen to show you played the drums
+function playDrumPow(x, y) {
+    return;
 }
