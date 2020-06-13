@@ -15,8 +15,12 @@ var capture;
 var poseNet;
 var poses = [];
 
+// Particles for the wrist animation!
+var particles = [];
+
 // Taken from Nick's videos and guides
 // opts fields: (param, peak, hold, time, a, d, s, r)
+
 function adsr (opts) {
     /* 0.8 second adsr, so ~120 bpm half note
                   peak
@@ -59,9 +63,6 @@ function spazVol (gainNode, n_oscs, duration, time = ctx.currentTime) {
 // Random music generation based on the four input attributes! Modulate
 //
 
-function makeMusic(n) {
-
-}
 
 function playBoop(hz) {
     const synth1 = new OscillatorNode(ctx)
@@ -116,11 +117,11 @@ function modulate(hz, freq) {
 
 
 
-// Stuff for p5
+// Stuff for p5. Ellipse size on mouse pointer
 let pi = [3,1,4,1,5,9,2,6,5,3,5,8,9]
 var minsize = 40
 var cursize = 0
-var maxsize = 200
+var maxsize = 140
 var curBG = 0
 var angle 
 var dt = 0.01
@@ -130,6 +131,10 @@ function setupApp() {
     // Cancel speech if there's current speech going on
     window.speechSynthesis.cancel()
     user_typed = false
+
+    // max framerate 60 for consistency across webcams
+    frameRate(60);
+
     inputs = document.querySelectorAll('input');
     for (let i = 0; i<inputs.length; i++) {
         if (inputs[i].value !== '') {
@@ -284,27 +289,37 @@ function startMusic() {
 
 function draw() {
     let dx, dy;
+
+    var d = new Date();
+    accum = d.getTime()/4 // accumulator variable!
+
+    let c = color(cos(second()) * 128 + 128, sin(2 * second()) * 128 + 128, accum % 256);
+    fill(c)
+    cursize = map(sin(angle), -1, 1, minsize, maxsize);
+
+    ellipse(mouseX, mouseY, sin(accum/97) * cursize, sin(accum/74) * cursize);
+    if (mouseIsPressed) {
+        angle += 2*PI/frameRate(); 
+    }
+
     if (capture) {
         // Place video in center of screen
         dx = (width - capture.width)/2
         dy = (height - capture.height)/2
-        tint(255, 60); // Display at 3/4 opacity for fade
+        tint(255, 60); // Display at 1/4 opacity for fade effect
         image(capture, dx, dy);
     }
-    
-    cursize = map(sin(angle), -1, 1, minsize, maxsize);
-    ellipse(mouseX, mouseY, cursize, cursize);
-    if (mouseIsPressed) {
-        angle += 2*PI/frameRate(); 
-    }
+
     drawSkeleton(dx, dy);
     drawWrists(dx, dy);
     drawKeypoints(dx, dy); 
+    drawParticles(particles);
+    // Handle particles! destroy any particles that are off screen
 }
 
 function changeBG() {
     curBG =[Math.random() * 255, Math.random() * 255, Math.random() * 255]
-    background(curBG[0], curBG[1], curBG[2], 128)
+    background(curBG[0], curBG[1], curBG[2], 64);
 }
 
 
@@ -385,6 +400,8 @@ position: {x: 445.63330934758767, y: 379.6665158559936}
 score: 0.838269054889679
 */
 
+// Probably a better idea to package these into an object...; didn't anticipate I'd need these
+// many variables at first for this function.
 
 // Magnitudes of velocity
 var lvel = 0
@@ -393,16 +410,26 @@ var rvel = 0
 // right and left wrist coordinates from last frame?
 var lastRy = 0
 var lastRx = 0
+var lastRpresent = false // was right wrist seen in last frame?
 var lastLy = 0
 var lastLx = 0
+var lastLpresent = false // was left wrist seen in last frame?
 
 // Need some acceleration to play the drum; high velocity but low velocity before!
 // Don't want infinite oscillating drums
-var trigger_low = 15
-var trigger_high = 25
+var LDelay = false // Whether or not this arm can play another drum sound...
+var RDelay = false
 
+var vtrigger = 25
+var minDelay = 280 // milliseconds until next drum trigger; don't want too many triggers
+
+// Avoid namespace conflict with dist() in p5...
+function eucdist(x1, y1, x2, y2) {
+    return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+}
 
 // Draws drumsticks on wrists! boom chacka wow wow
+// Plays drum sound if you move your wrists and adds an explosion
 function drawWrists(dx = 0, dy = 0) {
     // move pen by dx, dy before drawing
     push();
@@ -410,31 +437,57 @@ function drawWrists(dx = 0, dy = 0) {
     // Loop through all the skeletons detected
     for (let i = 0; i < poses.length; i++) {
         let skeleton = poses[i].skeleton;
+        let curRpresent = false;
+        let curLpresent = false;
         // For every skeleton, loop through all body connections
         for (let j = 0; j < skeleton.length; j++) {
+
             let partA = skeleton[j][0];
             let partB = skeleton[j][1];
             // Elbow -> Wrist connection is the forearm
             if (partA.part === "leftElbow" || partA.part === "rightElbow") {
-
                 if (partB.part === "leftWrist") {
+                    lvel = eucdist(partB.position.x, partB.position.y, lastLx, lastLy)
                     lastLy = partB.position.y;
                     lastLx = partB.position.x;
+                    curLpresent = true;
                 } else if (partB.part === "rightWrist") {
-                    console.log(partB.position)
+                    // console.log(partB.position)
+                    rvel = eucdist(partB.position.x, partB.position.y, lastRx, lastRy)
                     lastRy = partB.position.y;
                     lastRx = partB.position.x;
+                    curRpresent = true;
                 }
                 
-                // TODO: VELOCITY CODE + PLAY DRUMS
+                // If velocity of hands is fast enough, trigger explosion + cool particle effects
+                // Left hand has gravity particles, right hand doesn't!
+                // Particles velocity scales with force!
                 
+                if (lastLpresent && lvel > vtrigger && !LDelay) {
+                    LDelay = true;
+                    // Particles have no gravity for left hand!
+                    playDrumPow(lastLx + dx, lastLy + dy, 50, lvel/4) // send absolute coordinates since these will animate w.r.t the 
 
-                stroke(255);
-                strokeWeight(10);
+                    setTimeout(() => LDelay = false, minDelay);
+
+                } else if (lastRpresent && rvel > vtrigger && !RDelay) {
+                    RDelay = true;
+                    playDrumPow(dx + lastRx, dy + lastRy, 0, rvel/4); // put the real x, real y which require vid offset 
+                                          // send absolute coordinates since these will animate w.r.t the 
+                                          // untranslated canvas!
+                    setTimeout(() => RDelay = false, minDelay);
+                }
+
+                strokeWeight(15);
+                stroke(255, 204, 0);
+
                 // go PAST the second point
-                let movex = partB.position.x - partA.position.x
-                let movey = partB.position.y - partA.position.y
-                console.log("drawed");
+                let movex = partB.position.x - partA.position.x;
+                let movey = partB.position.y - partA.position.y;
+
+                lastLpresent = curLpresent;
+                lastRpresent = curRpresent;
+
                 line(partA.position.x, partA.position.y, partB.position.x + movex/2, partB.position.y + movey/2);
             }
         }
@@ -443,7 +496,16 @@ function drawWrists(dx = 0, dy = 0) {
 }
 
 // TODO
+// Different hands have diff particle effects!
 // Play the drum at the position of x,y and make a little pow on the screen to show you played the drums
-function playDrumPow(x, y) {
+function playDrumPow(x, y, gravity = 50, force = 20) {
+    drum = new Tone.MembraneSynth().toMaster();
+    drum.triggerAttackRelease("C2", "8n");
+
+    // Add particle where hand is!
+    let part = new Particle(x, y, 6 * force);
+    particles.push(part);
+
+    createExplosion(x, y, particles, gravity, force);
     return;
 }
