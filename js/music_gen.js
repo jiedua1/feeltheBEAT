@@ -420,8 +420,8 @@ var lastLpresent = false // was left wrist seen in last frame?
 var LDelay = false // Whether or not this arm can play another drum sound...
 var RDelay = false
 
-var vtrigger = 25
-var minDelay = 280 // milliseconds until next drum trigger; don't want too many triggers
+var vtrigger = 24
+var minDelay = 300 // milliseconds until next drum trigger; don't want too many triggers
 
 // Avoid namespace conflict with dist() in p5...
 function eucdist(x1, y1, x2, y2) {
@@ -472,7 +472,7 @@ function drawWrists(dx = 0, dy = 0) {
 
                 } else if (lastRpresent && rvel > vtrigger && !RDelay) {
                     RDelay = true;
-                    playDrumPow(dx + lastRx, dy + lastRy, 0, rvel/4); // put the real x, real y which require vid offset 
+                    playDrumPow(dx + lastRx, dy + lastRy, 0, rvel/4, 'G2'); // put the real x, real y which require vid offset 
                                           // send absolute coordinates since these will animate w.r.t the 
                                           // untranslated canvas!
                     setTimeout(() => RDelay = false, minDelay);
@@ -498,9 +498,10 @@ function drawWrists(dx = 0, dy = 0) {
 // TODO
 // Different hands have diff particle effects!
 // Play the drum at the position of x,y and make a little pow on the screen to show you played the drums
-function playDrumPow(x, y, gravity = 50, force = 20) {
+function playDrumPow(x, y, gravity = 50, force = 20, note = 'G1') {
     drum = new Tone.MembraneSynth().toMaster();
-    drum.triggerAttackRelease("C2", "8n");
+    drum.volume.value = force / 5;
+    drum.triggerAttackRelease(note, "8n");
 
     // Add particle where hand is!
     let part = new Particle(x, y, 6 * force);
