@@ -4,12 +4,6 @@ const fft = new AnalyserNode(ctx, {fftsize : 2048})
 // Vibe mode... make graphics cool!
 energy = 0
 
-
-const major = [0, 2, 4, 5, 7 , 9, 11, 12]
-const minor = [0, 2, 3, 5, 7, 8, 10, 12]
-
-const pentatonic = [0, 3, 5, 8, 10]
-
 // Initialize video element to none; user has to accept for it to be created
 var capture;
 var poseNet;
@@ -60,9 +54,9 @@ function spazVol (gainNode, n_oscs, duration, time = ctx.currentTime) {
     }
 }
 
-// Random music generation based on the four input attributes! Modulate
-//
-
+// A lot of these audio functions were copied/adapted from the video tutorials
+// Most of these aren't used; I decided to use tone.js for easier interfacing
+// more instruments + timbral settings and easier scheduling of notes
 
 function playBoop(hz) {
     const synth1 = new OscillatorNode(ctx)
@@ -121,7 +115,7 @@ function modulate(hz, freq) {
 let pi = [3,1,4,1,5,9,2,6,5,3,5,8,9]
 var minsize = 40
 var cursize = 0
-var maxsize = 140
+var maxsize = 160
 var curBG = 0
 var angle 
 var dt = 0.01
@@ -156,7 +150,7 @@ function setupApp() {
     // Change p5 code later; reinitialize the music player everytime the user clicks the button!
     c = createCanvas(800, 600)
     c.parent("p5canvas")
-    setInterval(changeBG, 1000);
+    setInterval(changeBG, 500);
     angle = PI
     tentacles = [] 
 
@@ -203,7 +197,7 @@ function setupApp() {
         // console.log(res);
     })
     
-    setTimeout((x) => startMusic(), 4500);
+    setTimeout((x) => startMusic(), 5000);
 }
 
 /* Performs the linear interpolation described in the mYOUsic algorithm */
@@ -232,59 +226,11 @@ function calcBPM(age) {
     }
 }
 
-/*
-    Algorithmicly generated mYOUsic:
 
-    A first name says so much about a person and can be a reflection of their
-    whole personality; just mentioned a person's first name can bring up so many
-    aspects of their personality and positive/negative emotions; the melody 
-    and some parts of the rhythm will be determined by the first name
 
-    Last name signifies a person's heritage. The baseline of the piece which 
-    serves as the harmony and gives it a distinctive underlying flavor is
-    determined by the last name.
-
-    Age parameter:
-    Age will determine tempo of piece according to a piecewise linear interpolation between
-    the points (0, 80), (20, 160), (80, 60); this is to roughly match your general 
-    energy levels :) 
-
-    The bio of a person describes extra elements of their personality and serve
-    as additions to the harmony and ornamental features; they're the cherry on 
-    top
-    
-    If you don't put an age, we'll just guess you have 12 year old energy levels.
-
-    Volume:
-    will be scaled slightly louder for older people to compensate for hearing loss!
-
-    And of course, the mYOUsic would not be complete without YOU. We can't force
-    you to participate though or guarantee that you have a webcam; you might just be a robot
-*/
-function startMusic() {
-    age = parseInt(document.querySelector("#age").value)
-    fname = document.querySelector('#fname').value
-    lname = document.querySelector('#lname').value
-    bio = document.querySelector('textarea').value
-
-    console.log(calcBPM(age))
-    Tone.Transport.bpm.value = calcBPM(age)
-    
-
-    /* TODO: modulo character codes of the letters by some prime number or whatever number
-     * that will correspond to different chord progressions and/or shifts between chord progressions!
-     * for the last name
-     * 
-     */
-
-     
-
-}
-
- // When the posenet model is loaded
+ // When the posenet model is loaded. For debug
  function modelLoaded() {
     console.log("Model Loaded!");
-
  }
 
 function draw() {
@@ -315,11 +261,6 @@ function draw() {
     drawKeypoints(dx, dy); 
     drawParticles(particles);
     // Handle particles! destroy any particles that are off screen
-}
-
-function changeBG() {
-    curBG =[Math.random() * 255, Math.random() * 255, Math.random() * 255]
-    background(curBG[0], curBG[1], curBG[2], 64);
 }
 
 
@@ -366,9 +307,6 @@ function drawKeypoints(dx = 0, dy = 0) {
     pop();
 }
 
-function playBass() {
-
-}
 // A function to draw the skeletons
 function drawSkeleton(dx = 0, dy = 0) {
     // move pen by dx, dy before drawing
